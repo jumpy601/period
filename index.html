@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="月月">
+<link rel="apple-touch-icon" href="icon.png">
+<title>月月 · 兩人生理期記錄</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#FBF9F6;
+  --card:#FFFFFF;
+  --ink:#3D3A3E;
+  --ink-soft:#8A8590;
+  --line:#EFEAE4;
+  --pA:#E07A8B;
+  --pA-soft:rgba(224,122,139,0.22);
+  --pB:#7C86CE;
+  --pB-soft:rgba(124,134,206,0.22);
+  --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  font-size:16px;line-height:1.5;}
+body{padding-bottom:40px;}
+
+/* ---------- header ---------- */
+.top{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;}
+.top h1{font-size:20px;font-weight:700;letter-spacing:1px;}
+.top h1 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 2px;}
+.icon-btn{border:none;background:var(--card);border:1px solid var(--line);color:var(--ink-soft);
+  width:36px;height:36px;border-radius:50%;font-size:16px;}
+
+.seg{margin:4px 16px 12px;display:flex;background:#F1ECE6;border-radius:12px;padding:3px;}
+.seg button{flex:1;border:none;background:transparent;padding:8px 0;border-radius:10px;
+  font-size:15px;color:var(--ink-soft);font-weight:600;}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+
+/* ---------- reminder banner ---------- */
+.banners{margin:0 16px 12px;}
+.banner{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;font-size:14px;}
+.banner .bdot{width:10px;height:10px;border-radius:50%;margin-right:10px;flex:none;}
+.banner b{margin:0 3px;}
+.banner .soon{color:#C2564C;font-weight:700;}
+.banner-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:10px 14px;margin-bottom:8px;}
+.banner-wrap .banner{border:none;padding:0;margin:0;background:transparent;border-radius:0;}
+.tip{margin-top:6px;padding:8px 10px;border-radius:10px;font-size:13px;color:#7A6A5E;
+  background:#FAF3EC;display:flex;align-items:flex-start;}
+.tip .ticon{margin-right:6px;flex:none;}
+
+/* ---------- calendar ---------- */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:0 16px 8px;}
+.cal-head .month{font-size:18px;font-weight:700;letter-spacing:1px;}
+.nav-btn{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+  width:34px;height:34px;border-radius:50%;font-size:15px;}
+.cal{margin:0 12px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:10px 6px 12px;}
+.wk{display:flex;}
+.wk div{flex:1;text-align:center;font-size:12px;color:var(--ink-soft);padding:4px 0 8px;}
+.grid{display:flex;flex-wrap:wrap;}
+.cell{width:14.28%;min-height:56px;padding:4px 2px;position:relative;}
+.cell .num{display:block;width:26px;height:26px;line-height:26px;margin:0 auto;
+  text-align:center;font-size:14px;border-radius:50%;}
+.cell.dim .num{color:#C9C3BC;}
+.cell.today .num{border:1.5px solid var(--ink);font-weight:700;}
+.ribbons{margin-top:3px;}
+.rb{height:6px;border-radius:3px;margin:2px 3px 0;opacity:0;}
+.rb.a{background:var(--pA);}
+.rb.b{background:var(--pB);}
+.rb.on{opacity:1;}
+.rb.pred{opacity:1;}
+.rb.a.pred{background:var(--pA-soft);border:1px dashed var(--pA);}
+.rb.b.pred{background:var(--pB-soft);border:1px dashed var(--pB);}
+.cell .notemark{position:absolute;top:4px;right:6px;width:5px;height:5px;border-radius:50%;background:#D8B24A;}
+
+.legend{display:flex;flex-wrap:wrap;margin:10px 20px 0;font-size:12px;color:var(--ink-soft);}
+.legend span{display:flex;align-items:center;margin-right:14px;margin-bottom:4px;}
+.legend i{display:inline-block;width:16px;height:6px;border-radius:3px;margin-right:5px;}
+
+/* ---------- list view ---------- */
+.list{margin:0 16px;display:none;}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:14px;}
+.pcard .phead{display:flex;align-items:center;margin-bottom:10px;}
+.pcard .phead .bdot{width:12px;height:12px;border-radius:50%;margin-right:8px;}
+.pcard .phead b{font-size:16px;}
+.stats{display:flex;text-align:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:10px 0;margin-bottom:10px;}
+.stats div{flex:1;}
+.stats .v{font-size:18px;font-weight:700;}
+.stats .k{font-size:11px;color:var(--ink-soft);}
+.cyc{display:flex;justify-content:space-between;font-size:14px;padding:7px 2px;
+  border-bottom:1px dashed var(--line);}
+.cyc:last-child{border-bottom:none;}
+.cyc .range{color:var(--ink);}
+.cyc .meta{color:var(--ink-soft);font-size:13px;}
+.empty{color:var(--ink-soft);font-size:14px;text-align:center;padding:8px 0;}
+
+/* ---------- modal ---------- */
+.mask{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(50,45,55,0.35);
+  display:none;z-index:10;}
+.mask.show{display:block;}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);
+  border-radius:20px 20px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));
+  z-index:11;display:none;box-shadow:0 -6px 24px rgba(0,0,0,0.12);}
+.sheet.show{display:block;}
+.sheet h3{font-size:17px;margin-bottom:14px;text-align:center;}
+.prow{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 4px;border-bottom:1px solid var(--line);}
+.prow .pname{display:flex;align-items:center;font-size:16px;font-weight:600;}
+.prow .pname .bdot{width:12px;height:12px;border-radius:50%;margin-right:10px;}
+.switch{width:52px;height:30px;border-radius:15px;background:#E4DFD8;position:relative;border:none;}
+.switch .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left .15s;}
+.switch.on-a{background:var(--pA);}
+.switch.on-b{background:var(--pB);}
+.switch.on-a .knob,.switch.on-b .knob{left:25px;}
+.notebox{width:100%;margin-top:14px;border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;font-size:15px;font-family:inherit;background:#FCFAF8;resize:none;}
+.sheet .actions{display:flex;margin-top:16px;}
+.sheet .actions button{flex:1;border:none;border-radius:12px;padding:12px 0;font-size:16px;font-weight:600;}
+.btn-ghost{background:#F1ECE6;color:var(--ink-soft);margin-right:10px;}
+.btn-main{background:var(--ink);color:#fff;}
+
+/* settings */
+.field{margin-bottom:12px;}
+.field label{font-size:13px;color:var(--ink-soft);display:block;margin-bottom:4px;}
+.field input{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  font-size:16px;font-family:inherit;background:#FCFAF8;}
+
+/* login & who picker */
+.fullscr{position:fixed;left:0;top:0;right:0;bottom:0;background:var(--bg);z-index:20;
+  display:none;padding:60px 28px 0;}
+.fullscr.show{display:block;}
+.fullscr h2{font-size:22px;text-align:center;margin-bottom:6px;}
+.fullscr .sub{font-size:14px;color:var(--ink-soft);text-align:center;margin-bottom:26px;}
+.fullscr .btn-main{width:100%;border:none;border-radius:12px;padding:13px 0;font-size:16px;
+  font-weight:600;background:var(--ink);color:#fff;margin-top:6px;}
+.err{color:#C2564C;font-size:13px;text-align:center;margin-top:10px;min-height:18px;}
+.who-cards{display:flex;margin-top:10px;}
+.who-card{flex:1;border:2px solid var(--line);background:var(--card);border-radius:18px;
+  padding:26px 0;text-align:center;font-size:17px;font-weight:700;margin:0 6px;}
+.who-card .bigdot{display:block;width:26px;height:26px;border-radius:50%;margin:0 auto 10px;}
+.sync-note{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:14px;}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1 id="appTitle">月月</h1>
+  <button class="icon-btn" id="btnSettings">&#9881;</button>
+</div>
+
+<div class="seg">
+  <button id="segCal" class="on">日曆</button>
+  <button id="segList">清單</button>
+</div>
+
+<div class="banners" id="banners"></div>
+
+<div id="calView">
+  <div class="cal-head">
+    <button class="nav-btn" id="btnPrev">&#8249;</button>
+    <div class="month" id="monthLabel"></div>
+    <button class="nav-btn" id="btnNext">&#8250;</button>
+  </div>
+  <div class="cal">
+    <div class="wk"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="list" id="listView"></div>
+
+<!-- day modal -->
+<div class="mask" id="mask"></div>
+<div class="sheet" id="daySheet">
+  <h3 id="sheetDate"></h3>
+  <div id="sheetRows"></div>
+  <textarea class="notebox" id="noteInput" rows="2" placeholder="備註(症狀、心情…選填)"></textarea>
+  <div class="actions">
+    <button class="btn-ghost" id="btnCancel">關閉</button>
+    <button class="btn-main" id="btnSave">儲存</button>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="sheet" id="setSheet">
+  <h3>設定</h3>
+  <div class="prow" style="border-bottom:none;padding-top:0">
+    <span class="pname">單人模式(只記錄第一位)</span>
+    <button class="switch" id="soloSwitch"><span class="knob"></span></button>
+  </div>
+  <div class="field"><label>第一位的名字</label><input id="nameA" maxlength="8"></div>
+  <div class="field"><label>第二位的名字</label><input id="nameB" maxlength="8"></div>
+  <div class="field">
+    <label>匯入過去紀錄(一行一次經期,格式:人 開始~結束)<br>例:1 2026-03-02~2026-03-06 或 2 2026-03-15~2026-03-19</label>
+    <textarea class="notebox" id="importBox" rows="4" style="margin-top:0" placeholder="1 2026-01-05~2026-01-09&#10;1 2026-02-02~2026-02-06&#10;2 2026-01-18~2026-01-22"></textarea>
+  </div>
+  <div class="empty" id="importMsg" style="display:none;padding:0 0 8px;font-size:13px"></div>
+  <div class="actions">
+    <button class="btn-ghost" id="btnSetCancel">關閉</button>
+    <button class="btn-main" id="btnSetSave">儲存</button>
+  </div>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn-ghost" id="btnWho" style="margin-right:10px">更改「我是誰」</button>
+    <button class="btn-ghost" id="btnLogout" style="margin-right:0">登出</button>
+  </div>
+</div>
+
+<!-- login -->
+<div class="fullscr" id="loginScr">
+  <h2>月月</h2>
+  <div class="sub">登入後,兩支手機的紀錄會自動同步</div>
+  <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="username"></div>
+  <div class="field"><label>密碼</label><input id="loginPw" type="password" autocomplete="current-password"></div>
+  <button class="btn-main" id="btnLogin">登入</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<!-- onboarding / who am I -->
+<div class="fullscr" id="whoScr">
+  <div id="whoStepMode" style="display:none">
+    <h2>歡迎使用月月 🌙</h2>
+    <div class="sub">想怎麼使用呢?之後可以在設定裡更改</div>
+    <div class="who-cards">
+      <button class="who-card" id="modeSolo"><span class="bigdot" style="background:#E07A8B"></span>單人使用</button>
+      <button class="who-card" id="modeDuo"><span class="bigdot" style="background:linear-gradient(90deg,#E07A8B 50%,#7C86CE 50%)"></span>兩人共用</button>
+    </div>
+  </div>
+  <div id="whoStepName" style="display:none">
+    <h2 id="nameTitle">幫自己取個名字</h2>
+    <div class="sub">名字會同步到所有登入的裝置,之後可以在設定裡改</div>
+    <div class="field" id="fieldA"><label id="labelA">名字</label><input id="setupNameA" maxlength="8" placeholder="例:小豬"></div>
+    <div class="field" id="fieldB"><label>第二位(紫色)</label><input id="setupNameB" maxlength="8" placeholder="例:小雞"></div>
+    <button class="btn-main" id="btnSetupNames">下一步</button>
+    <div class="err" id="setupErr"></div>
+  </div>
+  <div id="whoStepPick" style="display:none">
+    <h2 id="whoTitle">妳是哪一位?</h2>
+    <div class="sub">只需要選一次,之後可以在設定裡更改</div>
+    <div class="who-cards" id="whoCards"></div>
+    <div class="sync-note">這個選擇只存在這支手機,不影響共享資料</div>
+  </div>
+</div>
+
+<script>
+/* ================= data ================= */
+var STORE_KEY = 'periodDuo_v1';
+var WHO_KEY = 'periodDuo_who';      /* '0' / '1',只存本機 */
+var state = loadState();
+
+/* ====== Firebase(把你的 config 貼在這裡)====== */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA48LIEolnRfsX4l2VBHb3abuNsKj5YF6A",
+  authDomain: "period-duo.firebaseapp.com",
+  projectId: "period-duo"
+};
+var fbEnabled = FIREBASE_CONFIG.apiKey.indexOf('PASTE') !== 0;
+var db = null, docRef = null, lastCloudJson = '';
+
+function getWho(){
+  var w = null;
+  try{ w = localStorage.getItem(WHO_KEY); }catch(e){}
+  return (w === '0' || w === '1') ? parseInt(w,10) : null;
+}
+function setWho(i){
+  try{ localStorage.setItem(WHO_KEY, String(i)); }catch(e){}
+}
+
+function startAuthFlow(){
+  if(!fbEnabled){
+    /* 單機模式:略過登入,直接進 app(還沒填 config 時可先測 UI) */
+    afterDataReady();
+    return;
+  }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(function(user){
+    if(user){
+      hide2('loginScr');
+      /* 換帳號防護:這台裝置上次登入的是別的帳號 → 清空本機殘留資料 */
+      var lastUid = null;
+      try{ lastUid = localStorage.getItem('periodDuo_uid'); }catch(e){}
+      if(lastUid && lastUid !== user.uid){
+        state = { version:1, solo:false,
+          persons:[{name:'我',color:'#E07A8B'},{name:'她',color:'#7C86CE'}], days:{} };
+        try{
+          localStorage.setItem(STORE_KEY, JSON.stringify(state));
+          localStorage.removeItem(WHO_KEY);
+        }catch(e){}
+      }
+      try{ localStorage.setItem('periodDuo_uid', user.uid); }catch(e){}
+      docRef = db.collection('couples').doc(user.uid);
+      docRef.onSnapshot(function(snap){
+        if(snap.exists){
+          var d = snap.data();
+          var j = JSON.stringify({persons:d.persons, days:d.days, solo:d.solo});
+          if(j !== lastCloudJson){
+            lastCloudJson = j;
+            if(d.persons){ state.persons = d.persons; }
+            if(d.days){ state.days = d.days; }
+            state.solo = !!d.solo;
+            try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+            render();
+            /* 如果選身分畫面開著,名字剛同步下來要即時更新 */
+            var whoScr = document.getElementById('whoScr');
+            if(whoScr.className.indexOf('show') !== -1 && !namesAreDefault()){
+              showWhoCards();
+            }
+          }
+        }else{
+          isNewAccount = true;  /* 全新帳號:走 onboarding,完成後才寫入雲端 */
+        }
+        afterDataReady();
+      }, function(err){
+        document.getElementById('loginErr').textContent = '同步失敗:'+err.code;
+        afterDataReady();
+      });
+    }else{
+      show('loginScr');
+    }
+  });
+  document.getElementById('btnLogin').onclick = function(){
+    var em = document.getElementById('loginEmail').value.replace(/\s/g,'');
+    var pw = document.getElementById('loginPw').value;
+    document.getElementById('loginErr').textContent = '';
+    firebase.auth().signInWithEmailAndPassword(em, pw)['catch'](function(err){
+      document.getElementById('loginErr').textContent = '登入失敗,請確認帳號密碼('+err.code+')';
+    });
+  };
+}
+function pushCloud(){
+  if(!docRef){ return; }
+  var payload = { persons: state.persons, days: state.days, solo: !!state.solo, updatedAt: new Date().toISOString() };
+  lastCloudJson = JSON.stringify({persons:payload.persons, days:payload.days, solo:payload.solo});
+  docRef.set(payload)['catch'](function(){});
+}
+var isNewAccount = false;
+var dataReadyDone = false;
+function afterDataReady(){
+  if(dataReadyDone){ return; }
+  dataReadyDone = true;
+  if(isNewAccount || (!fbEnabled && namesAreDefault() && !Object.keys(state.days).length)){
+    showOnboarding();
+  }else if(isSolo()){
+    setWho(0);
+  }else if(getWho() === null){
+    showWhoPicker();
+  }
+  render();
+}
+function namesAreDefault(){
+  var a = state.persons[0].name, b = state.persons[1].name;
+  return (a === '我' || a === '她') && (b === '我' || b === '她');
+}
+function obStep(step){
+  document.getElementById('whoStepMode').style.display = (step==='mode')?'block':'none';
+  document.getElementById('whoStepName').style.display = (step==='name')?'block':'none';
+  document.getElementById('whoStepPick').style.display = (step==='pick')?'block':'none';
+}
+function showOnboarding(){
+  show('whoScr');
+  obStep('mode');
+  document.getElementById('modeSolo').onclick = function(){ obNameStep(true); };
+  document.getElementById('modeDuo').onclick = function(){ obNameStep(false); };
+}
+function obNameStep(solo){
+  state.solo = solo;
+  obStep('name');
+  document.getElementById('nameTitle').textContent = solo ? '幫自己取個名字' : '幫妳們取個名字';
+  document.getElementById('labelA').textContent = solo ? '名字' : '第一位(粉色)';
+  document.getElementById('fieldB').style.display = solo ? 'none' : '';
+  document.getElementById('setupErr').textContent = '';
+  document.getElementById('btnSetupNames').onclick = function(){
+    var a = document.getElementById('setupNameA').value.replace(/^\s+|\s+$/g,'');
+    var b = document.getElementById('setupNameB').value.replace(/^\s+|\s+$/g,'');
+    if(!a || (!solo && !b)){
+      document.getElementById('setupErr').textContent = solo ? '名字要填唷' : '兩個名字都要填唷';
+      return;
+    }
+    if(!solo && a === b){
+      document.getElementById('setupErr').textContent = '兩個名字要不一樣,不然分不出來啦';
+      return;
+    }
+    state.persons[0].name = a;
+    if(!solo){ state.persons[1].name = b; }
+    saveState();   /* 這裡才第一次寫入雲端 */
+    if(solo){
+      setWho(0);
+      hide2('whoScr');
+      render();
+    }else{
+      showWhoCards();
+    }
+  };
+}
+function showWhoPicker(){
+  show('whoScr');
+  if(namesAreDefault()){
+    obNameStep(false);
+  }else{
+    showWhoCards();
+  }
+}
+function showWhoCards(){
+  obStep('pick');
+  var html = '', i;
+  for(i=0;i<2;i++){
+    html += '<button class="who-card" data-i="'+i+'">'
+          +   '<span class="bigdot" style="background:'+state.persons[i].color+'"></span>'
+          +   esc(state.persons[i].name)
+          + '</button>';
+  }
+  document.getElementById('whoCards').innerHTML = html;
+  var btns = document.querySelectorAll('#whoCards .who-card');
+  for(i=0;i<btns.length;i++){
+    btns[i].onclick = function(){
+      setWho(parseInt(this.getAttribute('data-i'),10));
+      hide2('whoScr');
+      render();
+    };
+  }
+}
+function hide2(id){
+  var el = document.getElementById(id);
+  el.className = el.className.replace(/ ?show/g,'');
+}
+
+function loadState(){
+  var raw = null;
+  try{ raw = localStorage.getItem(STORE_KEY); }catch(e){}
+  if(raw){
+    try{
+      var s = JSON.parse(raw);
+      if(s && s.version === 1){ return s; }
+    }catch(e){}
+  }
+  return {
+    version: 1,
+    solo: false,
+    persons: [
+      { name:'我', color:'#E07A8B' },
+      { name:'她', color:'#7C86CE' }
+    ],
+    days: {}   /* 'YYYY-MM-DD': { p:[bool,bool], note:'' } */
+  };
+}
+function isSolo(){ return !!state.solo; }
+function personCount(){ return isSolo() ? 1 : 2; }
+function saveState(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+  pushCloud();
+}
+
+/* ================= date utils ================= */
+function pad(n){ return (n<10?'0':'')+n; }
+function ymd(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function parseYmd(s){
+  var p = s.split('-');
+  return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+}
+function addDays(d, n){
+  var x = new Date(d.getTime());
+  x.setDate(x.getDate()+n);
+  return x;
+}
+function diffDays(a, b){ /* b - a in days */
+  return Math.round((b.getTime()-a.getTime())/86400000);
+}
+
+/* ================= cycle logic ================= */
+/* group marked days of person idx into consecutive ranges */
+function getRanges(idx){
+  var keys = [];
+  for(var k in state.days){
+    if(state.days.hasOwnProperty(k) && state.days[k].p && state.days[k].p[idx]){ keys.push(k); }
+  }
+  keys.sort();
+  var ranges = [];
+  var i, cur = null;
+  for(i=0;i<keys.length;i++){
+    var d = parseYmd(keys[i]);
+    if(cur && diffDays(parseYmd(cur.end), d) === 1){
+      cur.end = keys[i];
+    }else{
+      cur = { start:keys[i], end:keys[i] };
+      ranges.push(cur);
+    }
+  }
+  return ranges;
+}
+function avg(arr, fallback){
+  if(!arr.length){ return fallback; }
+  var s=0,i;
+  for(i=0;i<arr.length;i++){ s+=arr[i]; }
+  return Math.round(s/arr.length);
+}
+function median(arr){
+  var a = arr.slice().sort(function(x,y){return x-y;});
+  var m = Math.floor(a.length/2);
+  return (a.length%2) ? a[m] : (a[m-1]+a[m])/2;
+}
+/* 抗異常預測:
+   1. 以中位數為基準,剔除偏離中位數 >7 天的異常週期
+   2. 對剩下最近 6 次做「越近權重越高」的加權平均
+   3. 用剩餘週期的離散度算 ± 區間 */
+function robustCycle(cycles){
+  if(!cycles.length){ return { val:28, range:0, excluded:0 }; }
+  var kept = cycles, excluded = 0, i;
+  if(cycles.length >= 3){
+    var med = median(cycles);
+    kept = [];
+    for(i=0;i<cycles.length;i++){
+      if(Math.abs(cycles[i]-med) <= 7){ kept.push(cycles[i]); }
+      else{ excluded++; }
+    }
+    if(!kept.length){ kept = [med]; }
+  }
+  var recent = kept.slice(-6);
+  var wsum=0, vsum=0;
+  for(i=0;i<recent.length;i++){
+    var w = i+1;               /* 越近的權重越高 */
+    wsum += w; vsum += recent[i]*w;
+  }
+  var val = Math.round(vsum/wsum);
+  /* 離散度 → 預測區間 */
+  var dev=0;
+  for(i=0;i<recent.length;i++){ dev += Math.abs(recent[i]-val); }
+  var range = recent.length>1 ? Math.max(1, Math.round(dev/recent.length)) : 2;
+  return { val:val, range:range, excluded:excluded };
+}
+function getStats(idx){
+  var ranges = getRanges(idx);
+  var cycles = [], lens = [], i;
+  for(i=0;i<ranges.length;i++){
+    lens.push(diffDays(parseYmd(ranges[i].start), parseYmd(ranges[i].end))+1);
+    if(i>0){
+      cycles.push(diffDays(parseYmd(ranges[i-1].start), parseYmd(ranges[i].start)));
+    }
+  }
+  var rc = robustCycle(cycles);
+  var avgCycle = rc.val;
+  var predRange = rc.range;
+  var excluded = rc.excluded;
+  var avgLen = avg(lens.slice(-6), 5);
+  var next = null;
+  if(ranges.length){
+    var lastStart = parseYmd(ranges[ranges.length-1].start);
+    next = addDays(lastStart, avgCycle);
+    var today = new Date(); today.setHours(0,0,0,0);
+    /* if prediction already passed, roll forward */
+    var guard = 0;
+    while(diffDays(today, next) < -avgLen && guard < 24){
+      next = addDays(next, avgCycle); guard++;
+    }
+  }
+  return { ranges:ranges, avgCycle:avgCycle, avgLen:avgLen, next:next, predRange:predRange, excluded:excluded };
+}
+/* predicted day set for calendar rendering: next 2 predicted periods */
+function getPredictedSet(idx){
+  var st = getStats(idx);
+  var set = {};
+  if(!st.next){ return set; }
+  var c, i, d;
+  for(c=0;c<2;c++){
+    var start = addDays(st.next, c*st.avgCycle);
+    for(i=0;i<st.avgLen;i++){
+      d = ymd(addDays(start, i));
+      set[d] = true;
+    }
+  }
+  return set;
+}
+
+/* ================= view state ================= */
+var viewMonth = new Date();
+viewMonth.setDate(1);
+var selectedDate = null;
+
+/* ================= render ================= */
+function render(){
+  renderTitle();
+  renderBanners();
+  renderCalendar();
+  renderList();
+  renderLegend();
+}
+function renderTitle(){
+  var h = document.getElementById('appTitle');
+  var dots = '<span class="dot" style="background:'+state.persons[0].color+'"></span>';
+  if(!isSolo()){ dots += '<span class="dot" style="background:'+state.persons[1].color+'"></span>'; }
+  h.innerHTML = '月月 ' + dots;
+}
+/* 貼心提醒:自己視角 / 照顧對方視角,各分「快來了 / 進行中」 */
+var TIPS_BEFORE = [
+  '記得檢查包包裡的衛生棉/棉條庫存,出門前補貨最安心',
+  '生理褲先洗好晾乾備用,這幾天睡覺可以更放心',
+  '這幾天少一點冰飲和咖啡因,身體會舒服一些',
+  '可以先準備暖暖包或熱水袋,肚子悶悶的時候派得上用場',
+  '早點睡、多喝溫水,經前的疲倦感會輕一點'
+];
+var TIPS_DURING = [
+  '多喝溫熱的水或黑糖薑茶,肚子會舒服一點',
+  '衛生棉記得 3~4 小時換一次,悶熱天更要勤換',
+  '鐵質補起來:菠菜、紅肉、豬肝湯都是好選擇',
+  '腰痠的話用熱敷袋敷 15 分鐘,或輕輕伸展一下',
+  '今天就對自己好一點,想休息就休息,不用硬撐'
+];
+var TIPS_BEFORE_PARTNER = [
+  '可以先幫她把暖暖包找出來,還有確認衛生棉庫存夠不夠',
+  '這幾天她可能比較累,晚餐吃溫熱一點的吧',
+  '幫她把生理褲洗好晾乾,她會很感動的',
+  '接下來幾天多點耐心和擁抱,少約太累的行程',
+  '偷偷準備一點她愛吃的,經前心情不穩時超有用'
+];
+var TIPS_DURING_PARTNER = [
+  '泡杯黑糖薑茶或溫熱飲給她,勝過千言萬語',
+  '她腰痠的話,幫她熱敷或輕輕按一按吧',
+  '今天讓她多休息,家事就交給妳了 💪',
+  '晚餐可以補鐵:菠菜、紅肉或豬肝湯都不錯',
+  '多一點擁抱和體貼,少一點「妳還好嗎」的追問'
+];
+function dailyTip(list){
+  var t = new Date();
+  var seed = t.getFullYear()*372 + (t.getMonth()+1)*31 + t.getDate();
+  return list[seed % list.length];
+}
+function renderBanners(){
+  var box = document.getElementById('banners');
+  var html = '', k;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var who = getWho();
+  /* 自己的橫幅放最上面 */
+  var order = (who === 1 && !isSolo()) ? [1,0] : [0,1];
+  for(k=0;k<personCount();k++){
+    var i = order[k];
+    var isSelf = (who === null) || (who === i);
+    var st = getStats(i);
+    var msg = null, tip = '';
+    /* 實際標記優先:今天有標記經期 → 直接顯示進行中 */
+    var todayStr = ymd(today);
+    var todayRec = state.days[todayStr];
+    var actualToday = todayRec && todayRec.p && todayRec.p[i];
+    if(actualToday){
+      msg = '<b>'+esc(state.persons[i].name)+'</b>的經期<b class="soon">進行中</b>';
+      tip = dailyTip(isSelf ? TIPS_DURING : TIPS_DURING_PARTNER);
+    }else if(st.next){
+      var dd = diffDays(today, st.next);
+      if(dd > 14){ msg = null; }
+      else if(dd > 0){
+        msg = '<b>'+esc(state.persons[i].name)+'</b>的經期預計 <b class="'+(dd<=3?'soon':'')+'">'+dd+' 天後</b>('+fmtMD(st.next)+' ±'+st.predRange+'天)';
+        if(dd <= 3){ tip = dailyTip(isSelf ? TIPS_BEFORE : TIPS_BEFORE_PARTNER); }
+      }else if(dd >= -st.avgLen){
+        msg = '<b>'+esc(state.persons[i].name)+'</b>的經期<b class="soon">預計進行中</b>'+(isSelf?',記得記錄唷':'');
+        tip = dailyTip(isSelf ? TIPS_DURING : TIPS_DURING_PARTNER);
+      }
+    }
+    if(!msg){ continue; }
+    html += '<div class="banner-wrap">'
+          +   '<div class="banner"><span class="bdot" style="background:'+state.persons[i].color+'"></span><span>'+msg+'</span></div>'
+          +   (tip ? '<div class="tip"><span class="ticon">&#127807;</span><span>'+tip+'</span></div>' : '')
+          + '</div>';
+  }
+  box.innerHTML = html;
+}
+function renderCalendar(){
+  var y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  document.getElementById('monthLabel').textContent = y+' 年 '+(m+1)+' 月';
+
+  var predA = getPredictedSet(0), predB = getPredictedSet(1);
+  var first = new Date(y, m, 1);
+  var startOffset = first.getDay();
+  var gridStart = addDays(first, -startOffset);
+  var todayStr = ymd(new Date());
+
+  var html = '', i;
+  for(i=0;i<42;i++){
+    var d = addDays(gridStart, i);
+    var ds = ymd(d);
+    var inMonth = (d.getMonth() === m);
+    var rec = state.days[ds];
+    var aOn = rec && rec.p && rec.p[0];
+    var bOn = rec && rec.p && rec.p[1];
+    var hasNote = rec && rec.note;
+    var cls = 'cell' + (inMonth?'':' dim') + (ds===todayStr?' today':'');
+
+    var rbA = aOn ? 'rb a on' : (predA[ds] ? 'rb a pred' : 'rb a');
+    var rbB = bOn ? 'rb b on' : (predB[ds] ? 'rb b pred' : 'rb b');
+    var ribbons = '<div class="'+rbA+'"></div>' + (isSolo() ? '' : '<div class="'+rbB+'"></div>');
+
+    html += '<div class="'+cls+'" data-d="'+ds+'">'
+          +   '<span class="num">'+d.getDate()+'</span>'
+          +   '<div class="ribbons">'+ribbons+'</div>'
+          +   (hasNote ? '<span class="notemark"></span>' : '')
+          + '</div>';
+  }
+  document.getElementById('grid').innerHTML = html;
+}
+function renderLegend(){
+  var p = state.persons;
+  var html = '<span><i style="background:'+p[0].color+'"></i>'+esc(p[0].name)+'(實際)</span>'
+    + '<span><i style="background:'+hexSoft(p[0].color)+';border:1px dashed '+p[0].color+'"></i>預測</span>';
+  if(!isSolo()){
+    html += '<span><i style="background:'+p[1].color+'"></i>'+esc(p[1].name)+'(實際)</span>'
+      + '<span><i style="background:'+hexSoft(p[1].color)+';border:1px dashed '+p[1].color+'"></i>預測</span>';
+  }
+  document.getElementById('legend').innerHTML = html;
+}
+function renderList(){
+  var box = document.getElementById('listView');
+  var html = '', i, j;
+  for(i=0;i<personCount();i++){
+    var st = getStats(i);
+    var p = state.persons[i];
+    var nextStr = st.next ? (fmtMD(st.next)+' ±'+st.predRange) : '—';
+    var today = new Date(); today.setHours(0,0,0,0);
+    var count = st.next ? diffDays(today, st.next) : null;
+    var countStr = (count===null) ? '—' : (count>0 ? count+' 天' : (count===0?'今天':'進行中?'));
+
+    html += '<div class="pcard">'
+          +   '<div class="phead"><span class="bdot" style="background:'+p.color+'"></span><b>'+esc(p.name)+'</b></div>'
+          +   '<div class="stats">'
+          +     '<div><div class="v">'+st.avgCycle+'</div><div class="k">平均週期(天)</div></div>'
+          +     '<div><div class="v">'+st.avgLen+'</div><div class="k">平均經期(天)</div></div>'
+          +     '<div><div class="v" style="font-size:15px">'+nextStr+'</div><div class="k">下次預測</div></div>'
+          +     '<div><div class="v" style="font-size:15px">'+countStr+'</div><div class="k">倒數</div></div>'
+          +   '</div>'
+          +   (st.excluded ? '<div class="empty" style="padding:0 0 8px;font-size:12px">已自動排除 '+st.excluded+' 次異常週期,不影響預測</div>' : '');
+    if(st.ranges.length){
+      for(j=st.ranges.length-1;j>=0;j--){
+        var r = st.ranges[j];
+        var len = diffDays(parseYmd(r.start), parseYmd(r.end))+1;
+        var cyc = (j>0) ? diffDays(parseYmd(st.ranges[j-1].start), parseYmd(r.start)) : null;
+        html += '<div class="cyc">'
+              +   '<span class="range">'+fmtMD(parseYmd(r.start))+' ~ '+fmtMD(parseYmd(r.end))+'</span>'
+              +   '<span class="meta">'+len+' 天'+(cyc?(' · 週期 '+cyc+' 天'):'')+'</span>'
+              + '</div>';
+      }
+    }else{
+      html += '<div class="empty">還沒有紀錄,到日曆點一天開始吧</div>';
+    }
+    html += '</div>';
+  }
+  box.innerHTML = html;
+}
+function fmtMD(d){ return (d.getMonth()+1)+'/'+d.getDate(); }
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function hexSoft(hex){
+  var r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
+  return 'rgba('+r+','+g+','+b+',0.22)';
+}
+
+/* ================= day modal ================= */
+var tmpToggle = [false,false];
+function openDay(ds){
+  selectedDate = ds;
+  var rec = state.days[ds] || { p:[false,false], note:'' };
+  tmpToggle = [ !!(rec.p && rec.p[0]), !!(rec.p && rec.p[1]) ];
+  var d = parseYmd(ds);
+  var wk = ['日','一','二','三','四','五','六'];
+  document.getElementById('sheetDate').textContent =
+    d.getFullYear()+' / '+(d.getMonth()+1)+' / '+d.getDate()+'(週'+wk[d.getDay()]+')';
+  renderSheetRows();
+  document.getElementById('noteInput').value = rec.note || '';
+  show('mask'); show('daySheet');
+}
+function renderSheetRows(){
+  var html = '', i;
+  for(i=0;i<personCount();i++){
+    var p = state.persons[i];
+    var onCls = tmpToggle[i] ? (i===0?' on-a':' on-b') : '';
+    html += '<div class="prow">'
+          +   '<span class="pname"><span class="bdot" style="background:'+p.color+'"></span>'+esc(p.name)+' 經期日</span>'
+          +   '<button class="switch'+onCls+'" data-i="'+i+'"><span class="knob"></span></button>'
+          + '</div>';
+  }
+  document.getElementById('sheetRows').innerHTML = html;
+  var btns = document.querySelectorAll('#sheetRows .switch');
+  for(i=0;i<btns.length;i++){
+    btns[i].onclick = function(){
+      var idx = parseInt(this.getAttribute('data-i'),10);
+      tmpToggle[idx] = !tmpToggle[idx];
+      renderSheetRows();
+    };
+  }
+}
+function saveDay(){
+  var note = document.getElementById('noteInput').value;
+  if(!tmpToggle[0] && !tmpToggle[1] && !note){
+    delete state.days[selectedDate];
+  }else{
+    state.days[selectedDate] = { p:[tmpToggle[0], tmpToggle[1]], note:note };
+  }
+  saveState();
+  closeSheets();
+  render();
+}
+
+/* ================= settings ================= */
+var tmpSolo = false;
+function refreshSoloUI(){
+  var sw = document.getElementById('soloSwitch');
+  sw.className = 'switch' + (tmpSolo ? ' on-a' : '');
+  document.getElementById('nameB').parentNode.style.display = tmpSolo ? 'none' : '';
+}
+function openSettings(){
+  document.getElementById('nameA').value = state.persons[0].name;
+  document.getElementById('nameB').value = state.persons[1].name;
+  document.getElementById('importMsg').style.display = 'none';
+  tmpSolo = isSolo();
+  refreshSoloUI();
+  document.getElementById('soloSwitch').onclick = function(){
+    tmpSolo = !tmpSolo;
+    refreshSoloUI();
+  };
+  show('mask'); show('setSheet');
+}
+function saveSettings(){
+  var a = document.getElementById('nameA').value.replace(/^\s+|\s+$/g,'');
+  var b = document.getElementById('nameB').value.replace(/^\s+|\s+$/g,'');
+  if(a){ state.persons[0].name = a; }
+  if(b){ state.persons[1].name = b; }
+  state.solo = tmpSolo;
+  if(state.solo){ setWho(0); }
+  var imp = document.getElementById('importBox').value;
+  var count = 0, bad = 0;
+  if(imp){
+    var lines = imp.split('\n'), i, j;
+    var re = /^\s*([12])\s+(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})\s*$/;
+    for(i=0;i<lines.length;i++){
+      if(!lines[i].replace(/\s/g,'')){ continue; }
+      var m = lines[i].match(re);
+      if(!m){ bad++; continue; }
+      var idx = parseInt(m[1],10)-1;
+      var s = parseYmd(m[2]), e = parseYmd(m[3]);
+      var n = diffDays(s, e);
+      if(n < 0 || n > 14){ bad++; continue; }  /* 起訖顛倒或超過14天視為錯誤 */
+      for(j=0;j<=n;j++){
+        var ds = ymd(addDays(s, j));
+        var rec = state.days[ds] || { p:[false,false], note:'' };
+        rec.p[idx] = true;
+        state.days[ds] = rec;
+      }
+      count++;
+    }
+  }
+  saveState();
+  if(bad){
+    var msgEl = document.getElementById('importMsg');
+    msgEl.style.display = 'block';
+    msgEl.textContent = '已匯入 '+count+' 筆,有 '+bad+' 行格式不對(請檢查後重貼那幾行)';
+    document.getElementById('importBox').value = imp;
+    render();
+    return;   /* 留在設定頁讓使用者修正 */
+  }
+  document.getElementById('importBox').value = '';
+  closeSheets();
+  render();
+}
+
+/* ================= helpers & events ================= */
+function show(id){ document.getElementById(id).className += ' show'; }
+function closeSheets(){
+  var ids = ['mask','daySheet','setSheet'], i;
+  for(i=0;i<ids.length;i++){
+    var el = document.getElementById(ids[i]);
+    el.className = el.className.replace(/ ?show/g,'');
+  }
+}
+function switchView(which){
+  var cal = document.getElementById('calView');
+  var list = document.getElementById('listView');
+  var sc = document.getElementById('segCal');
+  var sl = document.getElementById('segList');
+  if(which === 'cal'){
+    cal.style.display=''; list.style.display='none';
+    sc.className='on'; sl.className='';
+  }else{
+    cal.style.display='none'; list.style.display='block';
+    sc.className=''; sl.className='on';
+  }
+}
+
+function init(){
+  document.getElementById('segCal').onclick = function(){ switchView('cal'); };
+  document.getElementById('segList').onclick = function(){ switchView('list'); };
+  document.getElementById('btnPrev').onclick = function(){
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); renderCalendar();
+  };
+  document.getElementById('btnNext').onclick = function(){
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1); renderCalendar();
+  };
+  document.getElementById('grid').onclick = function(ev){
+    var el = ev.target;
+    while(el && el !== this && !el.getAttribute('data-d')){ el = el.parentNode; }
+    if(el && el.getAttribute && el.getAttribute('data-d')){ openDay(el.getAttribute('data-d')); }
+  };
+  document.getElementById('btnCancel').onclick = closeSheets;
+  document.getElementById('btnSave').onclick = saveDay;
+  document.getElementById('mask').onclick = closeSheets;
+  document.getElementById('btnSettings').onclick = openSettings;
+  document.getElementById('btnSetCancel').onclick = closeSheets;
+  document.getElementById('btnSetSave').onclick = saveSettings;
+  document.getElementById('btnWho').onclick = function(){
+    closeSheets();
+    showWhoPicker();
+  };
+  document.getElementById('btnLogout').onclick = function(){
+    closeSheets();
+    if(fbEnabled && firebase.auth().currentUser){
+      firebase.auth().signOut();
+      dataReadyDone = false;
+    }
+  };
+  startAuthFlow();
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+}else{
+  init();
+}
+</script>
+</body>
+</html>
