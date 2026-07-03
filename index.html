@@ -835,8 +835,8 @@ function buildChart(title, series, outlierThresh, unit){
         +  '<text x="'+x1+'" y="'+(Y(ucl)-5).toFixed(1)+'" text-anchor="end" font-size="10" fill="#B08890">上限 '+(Math.round(ucl*10)/10)+' '+unit+'</text>'
         +  '<text x="'+x1+'" y="'+(Y(lcl)+13).toFixed(1)+'" text-anchor="end" font-size="10" fill="#B08890">下限 '+(Math.round(lcl*10)/10)+' '+unit+'</text>';
   }
-  svg += '<line x1="'+x0+'" y1="'+Y(mean).toFixed(1)+'" x2="'+x1+'" y2="'+Y(mean).toFixed(1)+'" stroke="'+state.persons[trackPerson].color+'" stroke-width="1.5"/>'
-      +  '<text x="'+(x0+3)+'" y="'+(Y(mean)-5).toFixed(1)+'" font-size="10" fill="#C77F8D">平均 '+(Math.round(mean*10)/10)+'</text>';
+  svg += '<line x1="'+x0+'" y1="'+Y(mean).toFixed(1)+'" x2="'+x1+'" y2="'+Y(mean).toFixed(1)+'" stroke="'+state.persons[trackPerson].color+'" stroke-width="1" opacity="0.35"/>'
+      +  '<text x="'+(x0+3)+'" y="'+(Y(mean)-5).toFixed(1)+'" font-size="10" fill="'+state.persons[trackPerson].color+'" opacity="0.55">平均 '+(Math.round(mean*10)/10)+'</text>';
 
   /* 折線 */
   var pts = '';
