@@ -236,6 +236,16 @@ body{padding-bottom:40px;}
   </div>
 </div>
 
+<!-- delete cycle confirm -->
+<div class="sheet" id="delSheet">
+  <h3>刪除這筆紀錄?</h3>
+  <div class="empty" id="delInfo" style="padding:0 0 14px"></div>
+  <div class="actions">
+    <button class="btn-ghost" id="btnDelCancel">取消</button>
+    <button class="btn-main" id="btnDelConfirm" style="background:#C2564C">刪除</button>
+  </div>
+</div>
+
 <!-- login -->
 <div class="fullscr" id="loginScr">
   <h2>月月</h2>
@@ -759,10 +769,13 @@ function renderList(){
     if(st.ranges.length){
       for(j=st.ranges.length-1;j>=0;j--){
         var r = st.ranges[j];
-        var len = diffDays(parseYmd(r.start), parseYmd(r.end))+1;
-        var cyc = (j>0) ? diffDays(parseYmd(st.ranges[j-1].start), parseYmd(r.start)) : null;
-        html += '<div class="cyc">'
-              +   '<span class="range">'+fmtMD(parseYmd(r.start))+' ~ '+fmtMD(parseYmd(r.end))+'</span>'
+        var sd2 = parseYmd(r.start), ed2 = parseYmd(r.end);
+        var len = diffDays(sd2, ed2)+1;
+        var cyc = (j>0) ? diffDays(parseYmd(st.ranges[j-1].start), sd2) : null;
+        var rangeStr = sd2.getFullYear()+'/'+fmtMD(sd2)+' ~ '
+                     + (ed2.getFullYear()!==sd2.getFullYear() ? ed2.getFullYear()+'/' : '')+fmtMD(ed2);
+        html += '<div class="cyc" data-p="'+i+'" data-s="'+r.start+'" data-e="'+r.end+'">'
+              +   '<span class="range">'+rangeStr+'</span>'
               +   '<span class="meta">'+len+' 天'+(cyc?(' · 週期 '+cyc+' 天'):'')+'</span>'
               + '</div>';
       }
@@ -772,6 +785,39 @@ function renderList(){
     html += '</div>';
   }
   box.innerHTML = html;
+  /* 點一筆紀錄 → 確認刪除 */
+  var rows = box.querySelectorAll('.cyc');
+  for(i=0;i<rows.length;i++){
+    rows[i].onclick = function(){
+      pendingDel = {
+        p: parseInt(this.getAttribute('data-p'),10),
+        s: this.getAttribute('data-s'),
+        e: this.getAttribute('data-e')
+      };
+      var sd3 = parseYmd(pendingDel.s), ed3 = parseYmd(pendingDel.e);
+      document.getElementById('delInfo').textContent =
+        esc(state.persons[pendingDel.p].name)+' · '+sd3.getFullYear()+'/'+fmtMD(sd3)+' ~ '+fmtMD(ed3)
+        +'(共 '+(diffDays(sd3,ed3)+1)+' 天)';
+      show('mask'); show('delSheet');
+    };
+  }
+}
+var pendingDel = null;
+function doDeleteRange(){
+  if(!pendingDel){ return; }
+  var s = parseYmd(pendingDel.s), e = parseYmd(pendingDel.e);
+  var n = diffDays(s, e), j;
+  for(j=0;j<=n;j++){
+    var ds = ymd(addDays(s, j));
+    var rec = state.days[ds];
+    if(!rec){ continue; }
+    rec.p[pendingDel.p] = false;
+    if(!rec.p[0] && !rec.p[1] && !rec.note){ delete state.days[ds]; }
+  }
+  pendingDel = null;
+  saveState();
+  closeSheets();
+  render();
 }
 function fmtMD(d){ return (d.getMonth()+1)+'/'+d.getDate(); }
 
@@ -1049,7 +1095,7 @@ function saveSettings(){
 /* ================= helpers & events ================= */
 function show(id){ document.getElementById(id).className += ' show'; }
 function closeSheets(){
-  var ids = ['mask','daySheet','setSheet'], i;
+  var ids = ['mask','daySheet','setSheet','delSheet'], i;
   for(i=0;i<ids.length;i++){
     var el = document.getElementById(ids[i]);
     el.className = el.className.replace(/ ?show/g,'');
@@ -1087,6 +1133,8 @@ function init(){
   };
   document.getElementById('btnCancel').onclick = closeSheets;
   document.getElementById('btnSave').onclick = saveDay;
+  document.getElementById('btnDelCancel').onclick = closeSheets;
+  document.getElementById('btnDelConfirm').onclick = doDeleteRange;
   document.getElementById('mask').onclick = closeSheets;
   document.getElementById('btnSettings').onclick = openSettings;
   document.getElementById('btnSetCancel').onclick = closeSheets;
