@@ -2,7 +2,7 @@ name: line-reminder
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 每天 00:00 UTC = 台北早上 8:00
+        - cron: "17 0 * * *"   # 00:17 UTC = 台北早上 8:17
   workflow_dispatch: {}     # 也可以在 Actions 頁面手動觸發(測試用)
 
 jobs:
