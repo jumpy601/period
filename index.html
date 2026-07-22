@@ -43,6 +43,8 @@ body{padding-bottom:40px;}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
 
 /* ---------- reminder banner ---------- */
+.offline-bar{display:none;margin:0 16px 10px;padding:8px 12px;border-radius:12px;
+  background:#F5EDE3;color:#8A7560;font-size:13px;text-align:center;}
 .banners{margin:0 16px 12px;}
 .banner{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);
   border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;font-size:14px;}
@@ -181,6 +183,8 @@ body{padding-bottom:40px;}
   <button id="segTrack">追蹤</button>
 </div>
 
+<div class="offline-bar" id="offlineBar">📴 離線中,資料會在恢復連線後自動同步</div>
+
 <div class="banners" id="banners"></div>
 
 <div id="calView">
@@ -314,6 +318,10 @@ function startAuthFlow(){
   }
   firebase.initializeApp(FIREBASE_CONFIG);
   db = firebase.firestore();
+  /* 離線持久化:沒網路時仍讀得到雲端資料,恢復連線後自動補送寫入 */
+  try{
+    db.enablePersistence({ synchronizeTabs:true })['catch'](function(){});
+  }catch(e){}
   firebase.auth().onAuthStateChanged(function(user){
     if(user){
       hide2('loginScr');
@@ -1170,8 +1178,23 @@ function init(){
       dataReadyDone = false;
     }
   };
+  renderOfflineBar();
   startAuthFlow();
 }
+/* ================= 離線支援 ================= */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js')['catch'](function(){});
+  });
+}
+function renderOfflineBar(){
+  var bar = document.getElementById('offlineBar');
+  if(!bar){ return; }
+  bar.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', function(){ renderOfflineBar(); });
+window.addEventListener('offline', function(){ renderOfflineBar(); });
+
 if(document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', init);
 }else{
